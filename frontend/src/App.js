@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StickyNote, Users, Heart, Lock, Unlock, User, UserX, Send, Copy, Check, LogOut, Hash, Palette } from 'lucide-react';
+import { StickyNote, Users, Heart, Lock, Unlock, User, UserX, Send, Copy, Check, LogOut, Hash, Palette, Home, Plus, ArrowLeft } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost';
 
@@ -76,6 +76,51 @@ const GRADIENTS = {
 // Função para obter cores baseadas no tipo do painel
 const getColors = (type) => {
   return type === 'couple' ? COUPLE_COLORS : FRIENDS_COLORS;
+};
+
+// Gerenciamento de localStorage para painéis
+const STORAGE_KEY = 'stickyNotes_userPanels';
+
+const getUserPanels = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveUserPanel = (panel, userName) => {
+  try {
+    const panels = getUserPanels();
+    const newPanel = {
+      id: panel.id,
+      name: panel.name,
+      type: panel.type,
+      userName: userName,
+      joinedAt: new Date().toISOString()
+    };
+    
+    // Remove painel existente se já estiver na lista
+    const filtered = panels.filter(p => p.id !== panel.id);
+    
+    // Adiciona no início da lista
+    const updated = [newPanel, ...filtered].slice(0, 10); // Máximo 10 painéis
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  } catch (error) {
+    console.error('Erro ao salvar painel:', error);
+  }
+};
+
+const removeUserPanel = (panelId) => {
+  try {
+    const panels = getUserPanels();
+    const filtered = panels.filter(p => p.id !== panelId);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  } catch (error) {
+    console.error('Erro ao remover painel:', error);
+  }
 };
 
 // Componente de Post-it
@@ -191,6 +236,8 @@ const PostIt = ({ post, onDelete, onMove, canDelete, isAnonymousAllowed }) => {
 export default function StickyNotesApp() {
   const [currentPanel, setCurrentPanel] = useState(null);
   const [posts, setPosts] = useState([]);
+  const [userPanels, setUserPanels] = useState([]);
+  const [showPanelSelector, setShowPanelSelector] = useState(false);
   const [panelType, setPanelType] = useState('');
   const [panelCode, setPanelCode] = useState('');
   const [panelName, setPanelName] = useState('');
@@ -208,6 +255,12 @@ export default function StickyNotesApp() {
   const [joinPassword, setJoinPassword] = useState('');
 
   const pollingInterval = useRef(null);
+
+  // Carregar painéis do usuário ao inicializar
+  useEffect(() => {
+    const panels = getUserPanels();
+    setUserPanels(panels);
+  }, []);
 
   // Inicializar cores baseadas no tipo do painel
   useEffect(() => {
@@ -277,10 +330,6 @@ export default function StickyNotesApp() {
         if (pollingInterval.current) {
           clearInterval(pollingInterval.current);
         }
-        // Remover usuário quando sair
-        fetch(`${API_URL}/api/panels/${currentPanel.id}/users/${userName}`, {
-          method: 'DELETE'
-        }).catch(console.error);
       };
     }
   }, [currentPanel, userName, fetchPosts, fetchActiveUsers]);
@@ -320,6 +369,14 @@ export default function StickyNotesApp() {
       }
 
       const panel = await response.json();
+      
+      // Salvar painel na lista do usuário
+      saveUserPanel(panel, userName);
+      setUserPanels(getUserPanels());
+      
+      // Limpar formulário de criação
+      resetCreateForm();
+      
       setCurrentPanel(panel);
       
     } catch (err) {
@@ -330,13 +387,17 @@ export default function StickyNotesApp() {
     }
   };
 
-  const accessPanel = async () => {
-    if (!panelCode.trim()) {
+  const accessPanel = async (code = null, password = null, name = null) => {
+    const targetCode = code || panelCode;
+    const targetPassword = password || joinPassword;
+    const targetName = name || userName;
+    
+    if (!targetCode.trim()) {
       setError('Digite o código do painel');
       return;
     }
 
-    if (!userName.trim()) {
+    if (!targetName.trim()) {
       setError('Digite seu nome');
       return;
     }
@@ -345,12 +406,12 @@ export default function StickyNotesApp() {
     setError('');
 
     try {
-      const response = await fetch(`${API_URL}/api/panels/${panelCode.toUpperCase()}`, {
+      const response = await fetch(`${API_URL}/api/panels/${targetCode.toUpperCase()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          password: joinPassword || undefined,
-          userName: userName
+          password: targetPassword || undefined,
+          userName: targetName
         })
       });
       
@@ -370,10 +431,19 @@ export default function StickyNotesApp() {
       }
 
       const panel = await response.json();
+      
+      // Salvar painel na lista do usuário
+      saveUserPanel(panel, targetName);
+      setUserPanels(getUserPanels());
+      
+      // Limpar formulários
+      resetJoinForm();
+      
       setCurrentPanel(panel);
+      setUserName(targetName);
       
       // Buscar posts existentes
-      const postsResponse = await fetch(`${API_URL}/api/panels/${panelCode.toUpperCase()}/posts`);
+      const postsResponse = await fetch(`${API_URL}/api/panels/${targetCode.toUpperCase()}/posts`);
       if (postsResponse.ok) {
         const postsData = await postsResponse.json();
         setPosts(postsData);
@@ -421,10 +491,7 @@ export default function StickyNotesApp() {
       const createdPost = await response.json();
       setPosts(prev => [createdPost, ...prev]);
       
-      const colors = getColors(currentPanel.type);
-      setNewPost({ content: '', color: colors.notes[0], anonymous: false });
-      setShowNewPostForm(false);
-      setError(''); // Limpar erro após sucesso
+      closeNewPostForm();
     } catch (err) {
       console.error('Erro completo:', err);
       setError('Erro ao criar post. Tente novamente.');
@@ -488,22 +555,151 @@ export default function StickyNotesApp() {
       } catch (err) {
         console.error('Erro ao remover usuário:', err);
       }
+      
+      // Remover painel da lista
+      removeUserPanel(currentPanel.id);
+      setUserPanels(getUserPanels());
     }
     
-    setCurrentPanel(null);
-    setPosts([]);
-    setUserName('');
-    setPanelType('');
-    setActiveUsers([]);
-    setBorderColor('');
-    setBackgroundColor('');
+    // Voltar ao seletor de painéis
+    goToHome();
   };
 
-  // Tela inicial
-  if (!panelType) {
+  const goToHome = () => {
+    setCurrentPanel(null);
+    setPosts([]);
+    setShowPanelSelector(false);
+    setShowNewPostForm(false);
+    setError('');
+  };
+
+  const resetCreateForm = () => {
+    setPanelType('');
+    setPanelCode('');
+    setPanelName('');
+    setPanelPassword('');
+    setRequirePassword(false);
+    setBorderColor('');
+    setBackgroundColor('');
+    setUserName('');
+    setError('');
+    setLoading(false);
+  };
+
+  const resetJoinForm = () => {
+    setPanelType('');
+    setPanelCode('');
+    setJoinPassword('');
+    setUserName('');
+    setError('');
+    setLoading(false);
+  };
+
+  const closeNewPostForm = () => {
+    setShowNewPostForm(false);
+    setError('');
+    if (currentPanel) {
+      const colors = getColors(currentPanel.type);
+      setNewPost({ content: '', color: colors.notes[0], anonymous: false });
+    } else {
+      setNewPost({ content: '', color: '#FFFFFF', anonymous: false });
+    }
+  };
+
+  const joinSavedPanel = async (savedPanel) => {
+    await accessPanel(savedPanel.id, null, savedPanel.userName);
+  };
+
+  // Tela inicial - Seletor de painéis ou lista de painéis salvos
+  if (!currentPanel && !panelType && !showPanelSelector) {
     return (
       <div className={`min-h-screen ${GRADIENTS.friends} flex items-center justify-center p-4`}>
         <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-2xl w-full border border-gray-100">
+          <div className="flex items-center justify-center mb-8">
+            <StickyNote className="w-12 h-12 text-slate-600 mr-3" />
+            <h1 className="text-5xl font-bold text-gray-800">
+              Sticky Notes
+            </h1>
+          </div>
+          <p className="text-center text-gray-600 mb-10 text-lg">
+            Compartilhe ideias em painéis colaborativos aconchegantes
+          </p>
+
+          {/* Meus Painéis */}
+          {userPanels.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Meus Painéis ({userPanels.length})
+              </h3>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {userPanels.map((panel) => (
+                  <button
+                    key={panel.id}
+                    onClick={() => joinSavedPanel(panel)}
+                    className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left hover:shadow-md transform hover:-translate-y-0.5 ${
+                      panel.type === 'couple'
+                        ? 'bg-gradient-to-r from-rose-50 to-pink-50 border-rose-200 hover:border-rose-300'
+                        : 'bg-gradient-to-r from-slate-50 to-gray-50 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {panel.type === 'couple' ? (
+                          <Heart className="w-5 h-5 text-rose-500" />
+                        ) : (
+                          <Users className="w-5 h-5 text-slate-600" />
+                        )}
+                        <div>
+                          <h4 className="font-medium text-gray-800">
+                            {panel.name}
+                            {panel.type === 'couple' && ' ❤️'}
+                          </h4>
+                          <p className="text-sm text-gray-500">
+                            Como: {panel.userName} • {panel.id}
+                          </p>
+                        </div>
+                      </div>
+                      <ArrowLeft className="w-4 h-4 text-gray-400 transform rotate-180" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Ações Principais */}
+          <div className="space-y-4">
+            <button
+              onClick={() => setShowPanelSelector(true)}
+              className="w-full p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl hover:from-blue-100 hover:to-indigo-100 transition-all duration-300 border border-blue-200 hover:border-blue-300 hover:shadow-lg transform hover:-translate-y-1"
+            >
+              <div className="flex items-center">
+                <Plus className="w-8 h-8 text-blue-600 mr-4" />
+                <div className="text-left">
+                  <h3 className="text-xl font-semibold text-gray-800">Novo Painel ou Entrar</h3>
+                  <p className="text-sm text-gray-500 mt-1">Criar novo painel ou entrar com código</p>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Tela de seleção de tipo de painel
+  if (!currentPanel && !panelType && showPanelSelector) {
+    return (
+      <div className={`min-h-screen ${GRADIENTS.friends} flex items-center justify-center p-4`}>
+        <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-2xl w-full border border-gray-100">
+          <button
+            onClick={() => setShowPanelSelector(false)}
+            className="mb-6 text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1 text-sm"
+          >
+            ← Voltar
+          </button>
+
           <div className="flex items-center justify-center mb-8">
             <StickyNote className="w-12 h-12 text-slate-600 mr-3" />
             <h1 className="text-5xl font-bold text-gray-800">
@@ -560,7 +756,7 @@ export default function StickyNotesApp() {
   }
 
   // Tela de criação/acesso
-  if (!currentPanel) {
+  if (!currentPanel && panelType) {
     const colors = getColors(panelType === 'join' ? 'friends' : panelType);
     const gradient = panelType === 'couple' ? GRADIENTS.couple : GRADIENTS.friends;
 
@@ -568,7 +764,7 @@ export default function StickyNotesApp() {
       <div className={`min-h-screen ${gradient} flex items-center justify-center p-4`}>
         <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full border border-gray-100">
           <button
-            onClick={() => setPanelType('')}
+            onClick={resetCreateForm}
             className="mb-6 text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1 text-sm"
           >
             ← Voltar
@@ -635,7 +831,7 @@ export default function StickyNotesApp() {
                 </div>
 
                 <button
-                  onClick={accessPanel}
+                  onClick={() => accessPanel()}
                   disabled={loading}
                   className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 transform hover:scale-[1.02] ${
                     panelType === 'couple' 
@@ -659,31 +855,6 @@ export default function StickyNotesApp() {
                     onChange={(e) => setPanelName(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Palette className="w-4 h-4 inline mr-1" />
-                    Cores Disponíveis para as Notas
-                  </label>
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <p className="text-xs text-gray-600 mb-3">
-                      {panelType === 'couple' 
-                        ? 'Paleta romântica especial para casais 💕' 
-                        : 'Paleta aconchegante para amigos'
-                      }
-                    </p>
-                    <div className="flex gap-2 flex-wrap">
-                      {colors.notes.map(color => (
-                        <div
-                          key={color}
-                          className="w-8 h-8 rounded-lg border-2 border-gray-300"
-                          style={{ backgroundColor: color }}
-                          title={color === '#FFFFFF' ? 'Branco' : color}
-                        />
-                      ))}
-                    </div>
-                  </div>
                 </div>
 
                 <div>
@@ -785,11 +956,18 @@ export default function StickyNotesApp() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
+                onClick={goToHome}
+                className="text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1"
+              >
+                <Home className="w-4 h-4" />
+                Início
+              </button>
+              <button
                 onClick={exitPanel}
                 className="text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1"
               >
                 <LogOut className="w-4 h-4" />
-                Sair
+                Sair do Painel
               </button>
               <div>
                 <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
@@ -823,6 +1001,19 @@ export default function StickyNotesApp() {
             </div>
             
             <div className="flex items-center gap-4">
+              {userPanels.length > 1 && (
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-lg cursor-pointer hover:bg-opacity-80 transition-colors ${
+                  currentPanel.type === 'couple' ? 'bg-rose-50 hover:bg-rose-100' : 'bg-gray-50 hover:bg-gray-100'
+                }`}>
+                  <Users className={`w-4 h-4 ${
+                    currentPanel.type === 'couple' ? 'text-rose-500' : 'text-slate-600'
+                  }`} />
+                  <span className="text-sm font-medium text-gray-700">
+                    {userPanels.length} painéis
+                  </span>
+                </div>
+              )}
+
               <div className={`flex items-center gap-2 px-3 py-1 rounded-lg ${
                 currentPanel.type === 'couple' ? 'bg-rose-50' : 'bg-gray-50'
               }`}>
@@ -999,7 +1190,6 @@ export default function StickyNotesApp() {
                             : 'text-white drop-shadow-sm'
                         }`} />
                       )}
-                      {/* Indicador visual para cor selecionada em painéis de casal */}
                       {currentPanel.type === 'couple' && newPost.color === color && (
                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full flex items-center justify-center">
                           <span className="text-white text-xs">💕</span>
@@ -1008,7 +1198,6 @@ export default function StickyNotesApp() {
                     </button>
                   ))}
                 </div>
-                {/* Prévia da cor selecionada */}
                 <div className="mt-3 p-3 rounded-lg border-2 border-dashed border-gray-300">
                   <div 
                     className="w-full h-16 rounded-lg flex items-center justify-center text-sm text-gray-600 shadow-sm"
@@ -1025,12 +1214,7 @@ export default function StickyNotesApp() {
 
             <div className="flex gap-3 mt-8">
               <button
-                onClick={() => {
-                  setShowNewPostForm(false);
-                  setError('');
-                  const colors = getColors(currentPanel.type);
-                  setNewPost({ content: '', color: colors.notes[0], anonymous: false });
-                }}
+                onClick={closeNewPostForm}
                 className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
               >
                 Cancelar

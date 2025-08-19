@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StickyNote, Users, Heart, Lock, Unlock, User, UserX, Send, Copy, Check, LogOut, Hash } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:80';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost';
 
 // Paleta de cores neutras e aconchegantes
 const COZY_COLORS = {
@@ -173,15 +173,31 @@ export default function StickyNotesApp() {
   }, [currentPanel]);
 
   const fetchActiveUsers = useCallback(async () => {
-    // Por enquanto, simular usuários ativos já que o backend atual não tem esse endpoint
     if (!currentPanel) return;
-    setActiveUsers([{ name: userName }]);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/panels/${currentPanel.id}/users`);
+      if (response.ok) {
+        const usersData = await response.json();
+        setActiveUsers(usersData);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar usuários:', err);
+      setActiveUsers([{ name: userName }]);
+    }
   }, [currentPanel, userName]);
 
   useEffect(() => {
     if (currentPanel && userName) {
       fetchPosts();
       fetchActiveUsers();
+      
+      // Registrar usuário como ativo
+      fetch(`${API_URL}/api/panels/${currentPanel.id}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: userName })
+      }).catch(console.error);
       
       pollingInterval.current = setInterval(() => {
         fetchPosts();
@@ -192,6 +208,10 @@ export default function StickyNotesApp() {
         if (pollingInterval.current) {
           clearInterval(pollingInterval.current);
         }
+        // Remover usuário quando sair
+        fetch(`${API_URL}/api/panels/${currentPanel.id}/users/${userName}`, {
+          method: 'DELETE'
+        }).catch(console.error);
       };
     }
   }, [currentPanel, userName, fetchPosts, fetchActiveUsers]);
@@ -212,23 +232,28 @@ export default function StickyNotesApp() {
 
     try {
       const response = await fetch(`${API_URL}/api/panels`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        name: panelName,
-        type: panelType,
-        password: requirePassword ? panelPassword : null,
-        creator: userName,
-        borderColor
-    })
-  });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: panelName,
+          type: panelType,
+          password: requirePassword ? panelPassword : null,
+          creator: userName,
+          borderColor
+        })
+      });
 
-      if (!response.ok) throw new Error('Erro ao criar painel');
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('Erro ao criar painel:', errorData);
+        throw new Error('Erro ao criar painel');
+      }
 
       const panel = await response.json();
       setCurrentPanel(panel);
       
     } catch (err) {
+      console.error('Erro completo:', err);
       setError('Erro ao criar painel. Tente novamente.');
     } finally {
       setLoading(false);
@@ -254,19 +279,38 @@ export default function StickyNotesApp() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          password: joinPassword,
+          password: joinPassword || undefined,
           userName: userName
-      })
-    });
+        })
+      });
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Painel não encontrado');
+        }
+        if (response.status === 401) {
+          throw new Error('Senha incorreta');
+        }
+        if (response.status === 403) {
+          throw new Error('Painel lotado');
+        }
+        const errorData = await response.text();
+        console.error('Erro ao acessar painel:', errorData);
+        throw new Error('Erro ao acessar painel');
+      }
 
       const panel = await response.json();
       setCurrentPanel(panel);
       
-      const postsResponse = await fetch(`${API_URL}/api/murals/${panelCode.toUpperCase()}/posts`);
-      const postsData = await postsResponse.json();
-      setPosts(postsData);
+      // Buscar posts existentes
+      const postsResponse = await fetch(`${API_URL}/api/panels/${panelCode.toUpperCase()}/posts`);
+      if (postsResponse.ok) {
+        const postsData = await postsResponse.json();
+        setPosts(postsData);
+      }
       
     } catch (err) {
+      console.error('Erro completo:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -298,7 +342,11 @@ export default function StickyNotesApp() {
         })
       });
 
-      if (!response.ok) throw new Error('Erro ao criar post');
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('Erro ao criar post:', errorData);
+        throw new Error('Erro ao criar post');
+      }
 
       const createdPost = await response.json();
       setPosts(prev => [createdPost, ...prev]);
@@ -306,6 +354,7 @@ export default function StickyNotesApp() {
       setNewPost({ content: '', color: COZY_COLORS.notes[0], anonymous: false });
       setShowNewPostForm(false);
     } catch (err) {
+      console.error('Erro completo:', err);
       setError('Erro ao criar post. Tente novamente.');
     } finally {
       setLoading(false);
@@ -314,27 +363,30 @@ export default function StickyNotesApp() {
 
   const deletePost = async (postId) => {
     try {
-      await fetch(`${API_URL}/api/posts/${postId}?panel_id=${currentPanel.id}`, {
+      const response = await fetch(`${API_URL}/api/posts/${postId}?panel_id=${currentPanel.id}`, {
         method: 'DELETE'
       });
       
-      setPosts(prev => prev.filter(p => p.id !== postId));
+      if (response.ok || response.status === 404) {
+        setPosts(prev => prev.filter(p => p.id !== postId));
+      }
     } catch (err) {
+      console.error('Erro ao deletar post:', err);
       setError('Erro ao deletar post');
     }
   };
 
-const movePost = async (postId, x, y) => {
-  try {
-    await fetch(`${API_URL}/api/posts/${postId}/position`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        position_x: x,
-        position_y: y,
-        panel_id: currentPanel.id
-      })
-    });
+  const movePost = async (postId, x, y) => {
+    try {
+      await fetch(`${API_URL}/api/posts/${postId}/position`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          position_x: x,
+          position_y: y,
+          panel_id: currentPanel.id
+        })
+      });
 
       setPosts(prev => prev.map(p => 
         p.id === postId ? { ...p, position_x: x, position_y: y } : p
@@ -354,6 +406,18 @@ const movePost = async (postId, x, y) => {
     if (pollingInterval.current) {
       clearInterval(pollingInterval.current);
     }
+    
+    // Remover usuário ao sair
+    if (currentPanel && userName) {
+      try {
+        await fetch(`${API_URL}/api/panels/${currentPanel.id}/users/${userName}`, {
+          method: 'DELETE'
+        });
+      } catch (err) {
+        console.error('Erro ao remover usuário:', err);
+      }
+    }
+    
     setCurrentPanel(null);
     setPosts([]);
     setUserName('');
@@ -633,7 +697,7 @@ const movePost = async (postId, x, y) => {
           className="relative w-full h-full rounded-lg shadow-inner overflow-hidden"
           style={{
             backgroundColor: '#FAFAF8',
-            border: `8px solid ${currentPanel.borderColor || borderColor}`,
+            border: `8px solid ${currentPanel.border_color || borderColor}`,
             backgroundImage: `
               repeating-linear-gradient(
                 0deg,

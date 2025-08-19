@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StickyNote, Users, Heart, Lock, Unlock, User, UserX, Send, Copy, Check, LogOut, Hash } from 'lucide-react';
+import { StickyNote, Users, Heart, Lock, Unlock, User, UserX, Send, Copy, Check, LogOut, Hash, Palette } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost';
 
-// Paleta de cores neutras e aconchegantes
-const COZY_COLORS = {
+// Paleta de cores para painéis de amigos (neutras e aconchegantes)
+const FRIENDS_COLORS = {
   notes: [
     '#FAFAF8', // Off white
     '#FFE8E8', // Soft pink
@@ -22,10 +22,60 @@ const COZY_COLORS = {
     '#9FB4C7', // Soft blue
     '#B5B5B5', // Neutral grey
   ],
-  backgrounds: {
-    gradient: 'bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50',
-    panel: 'bg-gradient-to-br from-gray-50 to-slate-50'
-  }
+  backgrounds: [
+    '#FFFFFF', // Pure white
+    '#FAFAF8', // Off white
+    '#F8F8F6', // Warm white
+    '#F5F5F0', // Cream
+    '#F0F4EC', // Light sage
+    '#F8F6F9', // Light lavender
+    '#F6F8FB', // Light blue
+  ]
+};
+
+// Paleta de cores românticas para painéis de casal
+const COUPLE_COLORS = {
+  notes: [
+    '#FFFFFF', // Pure white
+    '#FFE4E6', // Soft rose
+    '#FFEEF0', // Blush pink
+    '#FFF0F5', // Lavender blush
+    '#FFE8F1', // Soft magenta
+    '#F0E8FF', // Light purple
+    '#FFE8E8', // Warm pink
+    '#FFF5F5', // Soft cream pink
+  ],
+  borders: [
+    '#D4567A', // Romantic rose
+    '#B8527D', // Deep rose
+    '#9B4F7A', // Plum
+    '#C75B7A', // Soft burgundy
+    '#D67C8F', // Dusty rose
+    '#A87CA8', // Lavender purple
+    '#CD8B9C', // Mauve
+  ],
+  backgrounds: [
+    '#FFFFFF', // Pure white
+    '#FFF8F9', // Soft rose white
+    '#FFF5F7', // Blush white
+    '#FFFAFC', // Pink cream
+    '#FFF0F5', // Lavender blush
+    '#F8F0FF', // Light purple
+    '#FFE8F1', // Soft magenta
+    '#FFEEF0', // Rose cream
+  ]
+};
+
+const GRADIENTS = {
+  friends: 'bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50',
+  couple: 'bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50',
+  panel_friends: 'bg-gradient-to-br from-gray-50 to-slate-50',
+  panel_couple: 'bg-gradient-to-br from-rose-50 to-pink-50'
+};
+
+// Função para obter cores baseadas no tipo do painel
+const getColors = (type) => {
+  return type === 'couple' ? COUPLE_COLORS : FRIENDS_COLORS;
 };
 
 // Componente de Post-it
@@ -92,10 +142,10 @@ const PostIt = ({ post, onDelete, onMove, canDelete, isAnonymousAllowed }) => {
   };
 
   const postStyle = {
-    backgroundColor: post.color || COZY_COLORS.notes[0],
+    backgroundColor: post.color || '#FFFFFF',
     left: position.x,
     top: position.y,
-    background: `linear-gradient(135deg, ${post.color || COZY_COLORS.notes[0]} 0%, ${post.color || COZY_COLORS.notes[0]}dd 100%)`
+    background: `linear-gradient(135deg, ${post.color || '#FFFFFF'} 0%, ${post.color || '#FFFFFF'}dd 100%)`
   };
 
   return (
@@ -149,14 +199,33 @@ export default function StickyNotesApp() {
   const [userName, setUserName] = useState('');
   const [activeUsers, setActiveUsers] = useState([]);
   const [showNewPostForm, setShowNewPostForm] = useState(false);
-  const [newPost, setNewPost] = useState({ content: '', color: COZY_COLORS.notes[0], anonymous: false });
+  const [newPost, setNewPost] = useState({ content: '', color: '#FFFFFF', anonymous: false });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
-  const [borderColor, setBorderColor] = useState(COZY_COLORS.borders[0]);
+  const [borderColor, setBorderColor] = useState('');
+  const [backgroundColor, setBackgroundColor] = useState('');
   const [joinPassword, setJoinPassword] = useState('');
 
   const pollingInterval = useRef(null);
+
+  // Inicializar cores baseadas no tipo do painel
+  useEffect(() => {
+    if (panelType && panelType !== 'join') {
+      const colors = getColors(panelType);
+      setBorderColor(colors.borders[0]);
+      setBackgroundColor(colors.backgrounds[0]);
+      setNewPost(prev => ({ ...prev, color: colors.notes[0] }));
+    }
+  }, [panelType]);
+
+  // Atualizar cores das notas quando entrar em um painel existente
+  useEffect(() => {
+    if (currentPanel) {
+      const colors = getColors(currentPanel.type);
+      setNewPost(prev => ({ ...prev, color: colors.notes[0] }));
+    }
+  }, [currentPanel]);
 
   const fetchPosts = useCallback(async () => {
     if (!currentPanel) return;
@@ -239,7 +308,8 @@ export default function StickyNotesApp() {
           type: panelType,
           password: requirePassword ? panelPassword : null,
           creator: userName,
-          borderColor
+          borderColor,
+          backgroundColor
         })
       });
 
@@ -351,8 +421,10 @@ export default function StickyNotesApp() {
       const createdPost = await response.json();
       setPosts(prev => [createdPost, ...prev]);
       
-      setNewPost({ content: '', color: COZY_COLORS.notes[0], anonymous: false });
+      const colors = getColors(currentPanel.type);
+      setNewPost({ content: '', color: colors.notes[0], anonymous: false });
       setShowNewPostForm(false);
+      setError(''); // Limpar erro após sucesso
     } catch (err) {
       console.error('Erro completo:', err);
       setError('Erro ao criar post. Tente novamente.');
@@ -423,12 +495,14 @@ export default function StickyNotesApp() {
     setUserName('');
     setPanelType('');
     setActiveUsers([]);
+    setBorderColor('');
+    setBackgroundColor('');
   };
 
   // Tela inicial
   if (!panelType) {
     return (
-      <div className={`min-h-screen ${COZY_COLORS.backgrounds.gradient} flex items-center justify-center p-4`}>
+      <div className={`min-h-screen ${GRADIENTS.friends} flex items-center justify-center p-4`}>
         <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-2xl w-full border border-gray-100">
           <div className="flex items-center justify-center mb-8">
             <StickyNote className="w-12 h-12 text-slate-600 mr-3" />
@@ -462,7 +536,7 @@ export default function StickyNotesApp() {
                 <Heart className="w-8 h-8 text-rose-500 mr-4" />
                 <div className="text-left">
                   <h3 className="text-xl font-semibold text-gray-800">Painel para Casal</h3>
-                  <p className="text-sm text-gray-500 mt-1">2 pessoas • Sem mensagens anônimas</p>
+                  <p className="text-sm text-gray-500 mt-1">2 pessoas • Sem mensagens anônimas • Tema romântico</p>
                 </div>
               </div>
             </button>
@@ -487,8 +561,11 @@ export default function StickyNotesApp() {
 
   // Tela de criação/acesso
   if (!currentPanel) {
+    const colors = getColors(panelType === 'join' ? 'friends' : panelType);
+    const gradient = panelType === 'couple' ? GRADIENTS.couple : GRADIENTS.friends;
+
     return (
-      <div className={`min-h-screen ${COZY_COLORS.backgrounds.gradient} flex items-center justify-center p-4`}>
+      <div className={`min-h-screen ${gradient} flex items-center justify-center p-4`}>
         <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full border border-gray-100">
           <button
             onClick={() => setPanelType('')}
@@ -498,9 +575,13 @@ export default function StickyNotesApp() {
           </button>
 
           <div className="flex items-center justify-center mb-8">
-            <StickyNote className="w-10 h-10 text-slate-600 mr-3" />
+            {panelType === 'couple' ? (
+              <Heart className="w-10 h-10 text-rose-500 mr-3" />
+            ) : (
+              <StickyNote className="w-10 h-10 text-slate-600 mr-3" />
+            )}
             <h2 className="text-4xl font-bold text-gray-800">
-              Sticky Notes
+              {panelType === 'couple' ? 'Painel Romântico' : 'Sticky Notes'}
             </h2>
           </div>
 
@@ -556,7 +637,11 @@ export default function StickyNotesApp() {
                 <button
                   onClick={accessPanel}
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-slate-600 to-gray-700 text-white py-3 rounded-xl font-semibold hover:from-slate-700 hover:to-gray-800 transition-all duration-200 disabled:opacity-50 transform hover:scale-[1.02]"
+                  className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 transform hover:scale-[1.02] ${
+                    panelType === 'couple' 
+                      ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700'
+                      : 'bg-gradient-to-r from-slate-600 to-gray-700 text-white hover:from-slate-700 hover:to-gray-800'
+                  }`}
                 >
                   {loading ? 'Entrando...' : 'Entrar no Painel'}
                 </button>
@@ -569,7 +654,7 @@ export default function StickyNotesApp() {
                   </label>
                   <input
                     type="text"
-                    placeholder={panelType === 'couple' ? 'Nosso cantinho' : 'Ideias da turma'}
+                    placeholder={panelType === 'couple' ? 'Nosso cantinho romântico ❤️' : 'Ideias da turma'}
                     value={panelName}
                     onChange={(e) => setPanelName(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
@@ -578,10 +663,36 @@ export default function StickyNotesApp() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Palette className="w-4 h-4 inline mr-1" />
+                    Cores Disponíveis para as Notas
+                  </label>
+                  <div className="p-4 bg-gray-50 rounded-xl">
+                    <p className="text-xs text-gray-600 mb-3">
+                      {panelType === 'couple' 
+                        ? 'Paleta romântica especial para casais 💕' 
+                        : 'Paleta aconchegante para amigos'
+                      }
+                    </p>
+                    <div className="flex gap-2 flex-wrap">
+                      {colors.notes.map(color => (
+                        <div
+                          key={color}
+                          className="w-8 h-8 rounded-lg border-2 border-gray-300"
+                          style={{ backgroundColor: color }}
+                          title={color === '#FFFFFF' ? 'Branco' : color}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Palette className="w-4 h-4 inline mr-1" />
                     Cor da Borda do Mural
                   </label>
                   <div className="flex gap-2 flex-wrap">
-                    {COZY_COLORS.borders.map(color => (
+                    {colors.borders.map(color => (
                       <button
                         key={color}
                         onClick={() => setBorderColor(color)}
@@ -590,6 +701,29 @@ export default function StickyNotesApp() {
                         }`}
                         style={{ backgroundColor: color, borderColor: color }}
                       />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Palette className="w-4 h-4 inline mr-1" />
+                    Cor de Fundo do Mural
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {colors.backgrounds.map(color => (
+                      <button
+                        key={color}
+                        onClick={() => setBackgroundColor(color)}
+                        className={`w-12 h-12 rounded-xl border-2 transition-all relative ${
+                          backgroundColor === color ? 'border-gray-700 scale-110 shadow-lg' : 'border-gray-300 hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: color }}
+                      >
+                        {backgroundColor === color && (
+                          <Check className="w-4 h-4 text-gray-700 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                        )}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -624,9 +758,13 @@ export default function StickyNotesApp() {
                 <button
                   onClick={createPanel}
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-slate-600 to-gray-700 text-white py-3 rounded-xl font-semibold hover:from-slate-700 hover:to-gray-800 transition-all duration-200 disabled:opacity-50 transform hover:scale-[1.02]"
+                  className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 transform hover:scale-[1.02] ${
+                    panelType === 'couple' 
+                      ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700'
+                      : 'bg-gradient-to-r from-slate-600 to-gray-700 text-white hover:from-slate-700 hover:to-gray-800'
+                  }`}
                 >
-                  {loading ? 'Criando...' : `Criar Painel ${panelType === 'couple' ? 'para Casal' : 'para Amigos'}`}
+                  {loading ? 'Criando...' : `Criar ${panelType === 'couple' ? 'Painel Romântico ❤️' : 'Painel para Amigos'}`}
                 </button>
               </>
             )}
@@ -637,8 +775,11 @@ export default function StickyNotesApp() {
   }
 
   // Tela do painel
+  const panelGradient = currentPanel.type === 'couple' ? GRADIENTS.panel_couple : GRADIENTS.panel_friends;
+  const currentColors = getColors(currentPanel.type);
+
   return (
-    <div className={`min-h-screen ${COZY_COLORS.backgrounds.panel}`}>
+    <div className={`min-h-screen ${panelGradient}`}>
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
@@ -652,13 +793,22 @@ export default function StickyNotesApp() {
               </button>
               <div>
                 <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                  <StickyNote className="w-5 h-5 text-slate-600" />
+                  {currentPanel.type === 'couple' ? (
+                    <Heart className="w-5 h-5 text-rose-500" />
+                  ) : (
+                    <StickyNote className="w-5 h-5 text-slate-600" />
+                  )}
                   {currentPanel.name}
+                  {currentPanel.type === 'couple' && (
+                    <span className="text-rose-500">❤️</span>
+                  )}
                 </h1>
                 <div className="flex items-center gap-4 mt-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-600">Código:</span>
-                    <code className="bg-gray-100 px-2 py-0.5 rounded text-xs font-mono font-bold">
+                    <code className={`px-2 py-0.5 rounded text-xs font-mono font-bold ${
+                      currentPanel.type === 'couple' ? 'bg-rose-100 text-rose-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
                       {currentPanel.id}
                     </code>
                     <button
@@ -673,8 +823,12 @@ export default function StickyNotesApp() {
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-lg">
-                <Users className="w-4 h-4 text-slate-600" />
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-lg ${
+                currentPanel.type === 'couple' ? 'bg-rose-50' : 'bg-gray-50'
+              }`}>
+                <Users className={`w-4 h-4 ${
+                  currentPanel.type === 'couple' ? 'text-rose-500' : 'text-slate-600'
+                }`} />
                 <span className="text-sm font-medium text-gray-700">
                   {activeUsers.length || 1} {currentPanel.type === 'couple' ? '/2' : '/15'}
                 </span>
@@ -682,10 +836,14 @@ export default function StickyNotesApp() {
 
               <button
                 onClick={() => setShowNewPostForm(true)}
-                className="bg-gradient-to-r from-slate-600 to-gray-700 text-white px-4 py-2 rounded-xl font-semibold hover:from-slate-700 hover:to-gray-800 transition-all duration-200 flex items-center gap-2 shadow-md text-sm"
+                className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2 shadow-md text-sm ${
+                  currentPanel.type === 'couple'
+                    ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700'
+                    : 'bg-gradient-to-r from-slate-600 to-gray-700 text-white hover:from-slate-700 hover:to-gray-800'
+                }`}
               >
                 <StickyNote className="w-4 h-4" />
-                Nova Nota
+                Nova Nota {currentPanel.type === 'couple' ? '💕' : ''}
               </button>
             </div>
           </div>
@@ -696,7 +854,7 @@ export default function StickyNotesApp() {
         <div 
           className="relative w-full h-full rounded-lg shadow-inner overflow-hidden"
           style={{
-            backgroundColor: '#FAFAF8',
+            backgroundColor: currentPanel.background_color || backgroundColor || '#FFFFFF',
             border: `8px solid ${currentPanel.border_color || borderColor}`,
             backgroundImage: `
               repeating-linear-gradient(
@@ -719,9 +877,20 @@ export default function StickyNotesApp() {
           {posts.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <StickyNote className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-xl text-gray-400 mb-2">Nenhuma nota ainda</p>
-                <p className="text-gray-500 text-sm">Clique em "Nova Nota" para adicionar a primeira!</p>
+                {currentPanel.type === 'couple' ? (
+                  <Heart className="w-16 h-16 text-rose-300 mx-auto mb-4" />
+                ) : (
+                  <StickyNote className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                )}
+                <p className="text-xl text-gray-400 mb-2">
+                  {currentPanel.type === 'couple' ? 'Nenhuma mensagem de amor ainda 💕' : 'Nenhuma nota ainda'}
+                </p>
+                <p className="text-gray-500 text-sm">
+                  {currentPanel.type === 'couple' 
+                    ? 'Clique em "Nova Nota" para deixar uma mensagem romântica!'
+                    : 'Clique em "Nova Nota" para adicionar a primeira!'
+                  }
+                </p>
               </div>
             </div>
           )}
@@ -743,8 +912,12 @@ export default function StickyNotesApp() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full border border-gray-100">
             <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2">
-              <StickyNote className="w-6 h-6 text-slate-600" />
-              Nova Nota Adesiva
+              {currentPanel.type === 'couple' ? (
+                <Heart className="w-6 h-6 text-rose-500" />
+              ) : (
+                <StickyNote className="w-6 h-6 text-slate-600" />
+              )}
+              {currentPanel.type === 'couple' ? 'Nova Mensagem de Amor 💕' : 'Nova Nota Adesiva'}
             </h2>
             
             {error && (
@@ -777,10 +950,13 @@ export default function StickyNotesApp() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mensagem
+                  {currentPanel.type === 'couple' ? 'Sua mensagem romântica ❤️' : 'Mensagem'}
                 </label>
                 <textarea
-                  placeholder="Escreva sua nota..."
+                  placeholder={currentPanel.type === 'couple' 
+                    ? 'Escreva algo especial para quem você ama...' 
+                    : 'Escreva sua nota...'
+                  }
                   value={newPost.content}
                   onChange={(e) => setNewPost({...newPost, content: e.target.value})}
                   rows={4}
@@ -790,23 +966,59 @@ export default function StickyNotesApp() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cor da Nota
+                  <Palette className="w-4 h-4 inline mr-1" />
+                  {currentPanel.type === 'couple' ? 'Cor da Nota Romântica 💕' : 'Cor da Nota'}
                 </label>
+                <div className="mb-2">
+                  <p className="text-xs text-gray-600">
+                    {currentPanel.type === 'couple' 
+                      ? 'Escolha uma cor apaixonante para sua mensagem de amor'
+                      : 'Escolha uma cor aconchegante para sua nota'
+                    }
+                  </p>
+                </div>
                 <div className="flex gap-2 flex-wrap">
-                  {COZY_COLORS.notes.map(color => (
+                  {currentColors.notes.map(color => (
                     <button
                       key={color}
                       onClick={() => setNewPost({...newPost, color})}
-                      className={`w-12 h-12 rounded-xl border-2 transition-all relative ${
-                        newPost.color === color ? 'border-gray-700 scale-110 shadow-lg' : 'border-gray-300 hover:scale-105'
+                      className={`w-12 h-12 rounded-xl border-2 transition-all relative group ${
+                        newPost.color === color 
+                          ? currentPanel.type === 'couple'
+                            ? 'border-rose-500 scale-110 shadow-lg ring-2 ring-rose-200'
+                            : 'border-gray-700 scale-110 shadow-lg ring-2 ring-gray-200'
+                          : 'border-gray-300 hover:scale-105 hover:border-gray-400'
                       }`}
                       style={{ backgroundColor: color }}
+                      title={color === '#FFFFFF' ? 'Branco puro' : color}
                     >
                       {newPost.color === color && (
-                        <Check className="w-4 h-4 text-gray-700 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                        <Check className={`w-4 h-4 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 ${
+                          color === '#FFFFFF' || color === '#FAFAF8' || color === '#F8F8F6' 
+                            ? 'text-gray-700' 
+                            : 'text-white drop-shadow-sm'
+                        }`} />
+                      )}
+                      {/* Indicador visual para cor selecionada em painéis de casal */}
+                      {currentPanel.type === 'couple' && newPost.color === color && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs">💕</span>
+                        </div>
                       )}
                     </button>
                   ))}
+                </div>
+                {/* Prévia da cor selecionada */}
+                <div className="mt-3 p-3 rounded-lg border-2 border-dashed border-gray-300">
+                  <div 
+                    className="w-full h-16 rounded-lg flex items-center justify-center text-sm text-gray-600 shadow-sm"
+                    style={{ backgroundColor: newPost.color }}
+                  >
+                    {currentPanel.type === 'couple' 
+                      ? 'Prévia da sua nota romântica 💕'
+                      : 'Prévia da sua nota'
+                    }
+                  </div>
                 </div>
               </div>
             </div>
@@ -816,7 +1028,8 @@ export default function StickyNotesApp() {
                 onClick={() => {
                   setShowNewPostForm(false);
                   setError('');
-                  setNewPost({ content: '', color: COZY_COLORS.notes[0], anonymous: false });
+                  const colors = getColors(currentPanel.type);
+                  setNewPost({ content: '', color: colors.notes[0], anonymous: false });
                 }}
                 className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
               >
@@ -825,12 +1038,16 @@ export default function StickyNotesApp() {
               <button
                 onClick={createPost}
                 disabled={loading}
-                className="flex-1 bg-gradient-to-r from-slate-600 to-gray-700 text-white py-3 rounded-xl font-semibold hover:from-slate-700 hover:to-gray-800 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 transform hover:scale-[1.02]"
+                className={`flex-1 py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 transform hover:scale-[1.02] ${
+                  currentPanel.type === 'couple'
+                    ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700'
+                    : 'bg-gradient-to-r from-slate-600 to-gray-700 text-white hover:from-slate-700 hover:to-gray-800'
+                }`}
               >
                 {loading ? 'Colando...' : (
                   <>
                     <Send className="w-4 h-4" />
-                    Colar Nota
+                    {currentPanel.type === 'couple' ? 'Enviar com Amor 💕' : 'Colar Nota'}
                   </>
                 )}
               </button>

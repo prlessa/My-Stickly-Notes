@@ -1,0 +1,123 @@
+#version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: mural_postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mural_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mural_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d mural_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Pub/Sub
+  redis:
+    image: redis:7-alpine
+    container_name: mural_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - mural_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Server Instance 1
+  backend1:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mural_backend1
+    environment:
+      PORT: 3001
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://user:password@postgres:5432/mural_db
+      FRONTEND_URL: http://localhost:3000
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mural_network
+    restart: unless-stopped
+
+  # Backend Server Instance 2
+  backend2:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mural_backend2
+    environment:
+      PORT: 3002
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://user:password@postgres:5432/mural_db
+      FRONTEND_URL: http://localhost:3000
+      NODE_ENV: production
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mural_network
+    restart: unless-stopped
+
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
+    container_name: mural_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend1
+      - backend2
+    networks:
+      - mural_network
+    restart: unless-stopped
+
+  # Frontend (React)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mural_frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:80
+    ports:
+      - "3000:3000"
+    depends_on:
+      - nginx
+    networks:
+      - mural_network
+    restart: unless-stopped
+
+networks:
+  mural_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

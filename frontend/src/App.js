@@ -3,85 +3,69 @@ import { StickyNote, Users, Heart, Lock, Unlock, User, UserX, Send, Copy, Check,
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost';
 
-// Paleta de cores para painéis de amigos (neutras e aconchegantes)
+// Cores principais da aplicação
+const MAIN_COLORS = {
+  background: '#FBFBFB', // Background principal
+  gradients: ['#ADB2D4', '#C7D9DD', '#D5E5D5', '#EEF1DA'] // Cores para gradientes
+};
+
+// Paleta de cores para painéis de amigos (4 cores específicas)
 const FRIENDS_COLORS = {
   notes: [
-    '#FAFAF8', // Off white
-    '#FFE8E8', // Soft pink
-    '#E8F4FD', // Baby blue
-    '#F0F4EC', // Sage green
-    '#FFF0F5', // Lavender blush
-    '#F5F5F0', // Warm grey
-    '#F5E6FF', // Soft purple
+    '#A8D8EA', // Azul claro
+    '#AA96DA', // Roxo claro
+    '#FCBAD3', // Rosa claro
+    '#FFFFD2'  // Amarelo claro
   ],
   borders: [
-    '#8B7E74', // Warm grey-brown
-    '#A8B5A0', // Sage
-    '#B5A7C6', // Soft purple
-    '#D4B5B0', // Dusty rose
-    '#9FB4C7', // Soft blue
-    '#B5B5B5', // Neutral grey
-    '#7D8471', // Olive green
-    '#A67C7C', // Muted rose
+    '#9EC6F3', // Azul
+    '#BDDDE4', // Azul acinzentado
+    '#FFF1D5', // Bege claro
+    '#FBFBFB'  // Branco off
   ],
   backgrounds: [
-    '#FFFFFF', // Pure white
-    '#FAFAF8', // Off white
-    '#F8F8F6', // Warm white
-    '#F5F5F0', // Cream
-    '#F0F4EC', // Light sage
-    '#F8F6F9', // Light lavender
-    '#F6F8FB', // Light blue
-    '#F9F7F4', // Warm beige
+    '#9EC6F3', // Azul
+    '#BDDDE4', // Azul acinzentado
+    '#FFF1D5', // Bege claro
+    '#FBFBFB'  // Branco off
   ]
 };
 
-// Paleta de cores românticas para painéis de casal
+// Paleta de cores românticas para painéis de casal (4 cores específicas)
 const COUPLE_COLORS = {
   notes: [
-    '#FFFFFF', // Pure white
-    '#FFE4E6', // Soft rose
-    '#FFEEF0', // Blush pink
-    '#FFF0F5', // Lavender blush
-    '#FFE8F1', // Soft magenta
-    '#F0E8FF', // Light purple
-    '#FFE8E8', // Warm pink
-    '#FFF5F5', // Soft cream pink
+    '#F9F5F6', // Rosa muito claro
+    '#F8E8EE', // Rosa claro
+    '#FDCEDF', // Rosa médio
+    '#F2BED1'  // Rosa mais forte
   ],
   borders: [
-    '#D4567A', // Romantic rose
-    '#B8527D', // Deep rose
-    '#9B4F7A', // Plum
-    '#C75B7A', // Soft burgundy
-    '#D67C8F', // Dusty rose
-    '#A87CA8', // Lavender purple
-    '#CD8B9C', // Mauve
-    '#E6A8B8', // Soft pink
+    '#FF9292', // Vermelho claro
+    '#FFB4B4', // Rosa salmão
+    '#FFDCDC', // Rosa muito claro
+    '#FFE8E8'  // Rosa quase branco
   ],
   backgrounds: [
-    '#FFFFFF', // Pure white
-    '#FFF8F9', // Soft rose white
-    '#FFF5F7', // Blush white
-    '#FFFAFC', // Pink cream
-    '#FFF0F5', // Lavender blush
-    '#F8F0FF', // Light purple
-    '#FFE8F1', // Soft magenta
-    '#FFEEF0', // Rose cream
+    '#FF9292', // Vermelho claro
+    '#FFB4B4', // Rosa salmão
+    '#FFDCDC', // Rosa muito claro
+    '#FFE8E8'  // Rosa quase branco
   ]
 };
 
+// Gradientes atualizados com as novas cores
 const GRADIENTS = {
-  friends: 'bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50',
-  couple: 'bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50',
-  panel_friends: 'bg-gradient-to-br from-gray-50 to-slate-50',
-  panel_couple: 'bg-gradient-to-br from-rose-50 to-pink-50'
+  main: `bg-gradient-to-br from-[#ADB2D4] via-[#C7D9DD] to-[#D5E5D5]`,
+  friends: `bg-gradient-to-br from-[#9EC6F3] via-[#BDDDE4] to-[#FFF1D5]`,
+  couple: `bg-gradient-to-br from-[#FF9292] via-[#FFB4B4] to-[#FFDCDC]`,
+  panel_friends: `bg-gradient-to-br from-[#BDDDE4] to-[#FFF1D5]`,
+  panel_couple: `bg-gradient-to-br from-[#FFB4B4] to-[#FFDCDC]`
 };
 
 // Função para obter cores baseadas no tipo do painel
 const getColors = (type) => {
   return type === 'couple' ? COUPLE_COLORS : FRIENDS_COLORS;
 };
-
 // Componente de Post-it
 const PostIt = ({ post, onDelete, onMove, canDelete, isAnonymousAllowed }) => {
   const [position, setPosition] = useState({ x: post.position_x || 50, y: post.position_y || 50 });
@@ -203,7 +187,7 @@ export default function StickyNotesApp() {
   const [userName, setUserName] = useState('');
   const [activeUsers, setActiveUsers] = useState([]);
   const [showNewPostForm, setShowNewPostForm] = useState(false);
-  const [newPost, setNewPost] = useState({ content: '', color: '#FFFFFF', anonymous: false });
+  const [newPost, setNewPost] = useState({ content: '', color: '#A8D8EA', anonymous: false });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -217,8 +201,10 @@ export default function StickyNotesApp() {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [requiresPasswordCheck, setRequiresPasswordCheck] = useState(false);
   
-  // Novo estado para controlar a escolha inicial
+  // Novos estados para controlar fluxo e "Meus Murais" na tela principal
   const [initialChoice, setInitialChoice] = useState('');
+  const [showMainMyPanels, setShowMainMyPanels] = useState(false);
+  const [userNameForPanels, setUserNameForPanels] = useState('');
 
   const pollingInterval = useRef(null);
 
@@ -240,6 +226,22 @@ export default function StickyNotesApp() {
       loadMyPanels();
     }
   }, [currentPanel]);
+
+  // Carregar painéis do usuário para "Meus Murais" na tela principal
+  const loadMyPanelsForMainScreen = useCallback(async (username) => {
+    if (!username.trim()) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/users/${username}/panels`);
+      if (response.ok) {
+        const panels = await response.json();
+        setMyPanels(panels);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar painéis:', err);
+      setMyPanels([]);
+    }
+  }, []);
 
   const loadMyPanels = useCallback(async () => {
     if (!userName) return;
@@ -332,6 +334,231 @@ export default function StickyNotesApp() {
     checkPassword();
   }, [panelCode, initialChoice]);
 
+  // Função para entrar em um painel a partir da tela "Meus Murais"
+  const joinPanelFromMyPanels = async (panel) => {
+    setUserName(userNameForPanels);
+    setCurrentPanel(panel);
+    setShowMainMyPanels(false);
+  };
+
+  // Tela inicial - Nova estrutura com "Meus Murais" no topo
+  if (!initialChoice && !showMainMyPanels) {
+    return (
+      <div className={`min-h-screen ${GRADIENTS.main}`} style={{ backgroundColor: MAIN_COLORS.background }}>
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-2xl w-full border border-gray-100">
+            <div className="flex items-center justify-center mb-8">
+              <StickyNote className="w-12 h-12 text-slate-600 mr-3" />
+              <h1 className="text-5xl font-bold text-gray-800">
+                Sticky Notes
+              </h1>
+            </div>
+            <p className="text-center text-gray-600 mb-10 text-lg">
+              Escolha uma opção para começar.
+            </p>
+
+            <div className="space-y-4">
+              <button
+                onClick={() => setShowMainMyPanels(true)}
+                className="w-full p-6 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl hover:from-purple-100 hover:to-indigo-100 transition-all duration-300 border border-purple-200 hover:border-purple-300 hover:shadow-lg transform hover:-translate-y-1"
+              >
+                <div className="flex items-center">
+                  <Users className="w-8 h-8 text-purple-600 mr-4" />
+                  <div className="text-left">
+                    <h3 className="text-xl font-semibold text-gray-800">Meus murais</h3>
+                    <p className="text-gray-600 text-sm mt-1">Acesse os murais que você já participa</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setInitialChoice('create')}
+                className="w-full p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl hover:from-blue-100 hover:to-indigo-100 transition-all duration-300 border border-blue-200 hover:border-blue-300 hover:shadow-lg transform hover:-translate-y-1"
+              >
+                <div className="flex items-center">
+                  <StickyNote className="w-8 h-8 text-blue-600 mr-4" />
+                  <div className="text-left">
+                    <h3 className="text-xl font-semibold text-gray-800">Crie seu mural</h3>
+                    <p className="text-gray-600 text-sm mt-1">Comece um novo mural para compartilhar com amigos ou seu par</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setInitialChoice('join')}
+                className="w-full p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl hover:from-green-100 hover:to-emerald-100 transition-all duration-300 border border-green-200 hover:border-green-300 hover:shadow-lg transform hover:-translate-y-1"
+              >
+                <div className="flex items-center">
+                  <Hash className="w-8 h-8 text-green-600 mr-4" />
+                  <div className="text-left">
+                    <h3 className="text-xl font-semibold text-gray-800">Acesse um mural</h3>
+                    <p className="text-gray-600 text-sm mt-1">Entre em um mural existente usando um código</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Tela "Meus Murais" da tela principal
+  if (showMainMyPanels) {
+    return (
+      <div className={`min-h-screen ${GRADIENTS.main}`} style={{ backgroundColor: MAIN_COLORS.background }}>
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full border border-gray-100">
+            <button
+              onClick={() => {
+                setShowMainMyPanels(false);
+                setMyPanels([]);
+                setUserNameForPanels('');
+              }}
+              className="mb-6 text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1 text-sm"
+            >
+              ← Voltar
+            </button>
+
+            <div className="flex items-center justify-center mb-8">
+              <Users className="w-10 h-10 text-purple-600 mr-3" />
+              <h2 className="text-4xl font-bold text-gray-800">
+                Meus Murais
+              </h2>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Seu Nome
+                </label>
+                <input
+                  type="text"
+                  placeholder="Digite seu nome para ver seus murais"
+                  value={userNameForPanels}
+                  onChange={(e) => setUserNameForPanels(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all"
+                />
+              </div>
+
+              <button
+                onClick={() => loadMyPanelsForMainScreen(userNameForPanels)}
+                disabled={loading || !userNameForPanels.trim()}
+                className="w-full py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 transform hover:scale-[1.02] bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700"
+              >
+                {loading ? 'Buscando...' : 'Buscar Meus Murais'}
+              </button>
+
+              {myPanels.length > 0 && (
+                <div className="space-y-3 mt-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                    Murais encontrados ({myPanels.length})
+                  </h3>
+                  {myPanels.map(panel => (
+                    <div
+                      key={panel.id}
+                      className="p-4 rounded-xl border-2 border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {panel.type === 'couple' ? (
+                            <Heart className="w-5 h-5 text-rose-500" />
+                          ) : (
+                            <Users className="w-5 h-5 text-slate-600" />
+                          )}
+                          <div>
+                            <h4 className="font-semibold text-gray-800">{panel.name}</h4>
+                            <p className="text-xs text-gray-600">
+                              {panel.type === 'couple' ? 'Mural para casais' : 'Mural para amigos'}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => joinPanelFromMyPanels(panel)}
+                          className="px-3 py-1 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+                        >
+                          Entrar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {myPanels.length === 0 && userNameForPanels && !loading && (
+                <div className="text-center py-6">
+                  <p className="text-gray-500">Nenhum mural encontrado para este usuário.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  // Tela de escolha do tipo de painel (após escolher "Crie seu mural")
+  if (initialChoice === 'create' && !panelType) {
+    return (
+      <div className={`min-h-screen ${GRADIENTS.main}`} style={{ backgroundColor: MAIN_COLORS.background }}>
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-2xl w-full border border-gray-100">
+            <button
+              onClick={() => setInitialChoice('')}
+              className="mb-6 text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1 text-sm"
+            >
+              ← Voltar
+            </button>
+
+            <div className="flex items-center justify-center mb-8">
+              <StickyNote className="w-12 h-12 text-slate-600 mr-3" />
+              <h1 className="text-4xl font-bold text-gray-800">
+                Tipo de Mural
+              </h1>
+            </div>
+            <p className="text-center text-gray-600 mb-10 text-lg">
+              Escolha o tipo de grupo para seu mural.
+            </p>
+
+            <div className="space-y-4">
+              <button
+                onClick={() => setPanelType('friends')}
+                className={`w-full p-6 ${GRADIENTS.friends} rounded-2xl hover:shadow-lg transition-all duration-300 border border-[#9EC6F3] hover:border-[#BDDDE4] transform hover:-translate-y-1`}
+              >
+                <div className="flex items-center">
+                  <Users className="w-8 h-8 text-slate-600 mr-4" />
+                  <div className="text-left">
+                    <h3 className="text-xl font-semibold text-gray-800">Para amigos</h3>
+                    <p className="text-gray-600 text-sm mt-1">Mural aconchegante para compartilhar com amigos</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setPanelType('couple')}
+                className={`w-full p-6 ${GRADIENTS.couple} rounded-2xl hover:shadow-lg transition-all duration-300 border border-[#FF9292] hover:border-[#FFB4B4] transform hover:-translate-y-1`}
+              >
+                <div className="flex items-center">
+                  <Heart className="w-8 h-8 text-rose-500 mr-4" />
+                  <div className="text-left">
+                    <h3 className="text-xl font-semibold text-gray-800">Para casais</h3>
+                    <p className="text-gray-600 text-sm mt-1">Mural romântico para compartilhar com seu par</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Continuar com as demais funções de API
   const createPanel = async () => {
     if (!panelName.trim()) {
       setError('Digite um nome para o painel');
@@ -448,6 +675,207 @@ export default function StickyNotesApp() {
       setLoading(false);
     }
   };
+
+  // Tela de criação/acesso
+  if (!currentPanel) {
+    const colors = getColors(panelType === 'join' ? 'friends' : panelType);
+    const gradient = panelType === 'couple' ? GRADIENTS.couple : 
+                    initialChoice === 'join' ? GRADIENTS.main : GRADIENTS.friends;
+
+    return (
+      <div className={`min-h-screen ${gradient}`} style={{ backgroundColor: MAIN_COLORS.background }}>
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full border border-gray-100">
+            <button
+              onClick={() => {
+                if (initialChoice === 'join') {
+                  setInitialChoice('');
+                } else {
+                  setPanelType('');
+                }
+              }}
+              className="mb-6 text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1 text-sm"
+            >
+              ← Voltar
+            </button>
+
+            <div className="flex items-center justify-center mb-8">
+              {panelType === 'couple' ? (
+                <Heart className="w-10 h-10 text-rose-500 mr-3" />
+              ) : initialChoice === 'join' ? (
+                <Hash className="w-10 h-10 text-green-600 mr-3" />
+              ) : (
+                <StickyNote className="w-10 h-10 text-slate-600 mr-3" />
+              )}
+              <h2 className="text-4xl font-bold text-gray-800">
+                {panelType === 'couple' ? 'Painel Romântico' : 
+                 initialChoice === 'join' ? 'Acessar Mural' : 
+                 'Novo Mural'}
+              </h2>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Seu Nome
+                </label>
+                <input
+                  type="text"
+                  placeholder="Como você quer ser chamado?"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
+                />
+              </div>
+
+              {initialChoice === 'join' ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Código do Mural
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: ABC123"
+                      value={panelCode}
+                      onChange={(e) => setPanelCode(e.target.value.toUpperCase())}
+                      maxLength={6}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent uppercase font-mono text-lg tracking-wider transition-all"
+                    />
+                  </div>
+
+                  {requiresPasswordCheck && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Senha do Mural
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="Digite a senha do mural"
+                        value={joinPassword}
+                        onChange={(e) => setJoinPassword(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
+                      />
+                    </div>
+                  )}
+
+                  <button
+                    onClick={accessPanel}
+                    disabled={loading}
+                    className="w-full py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 transform hover:scale-[1.02] bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700"
+                  >
+                    {loading ? 'Entrando...' : 'Entrar no Mural'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nome do Mural
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={panelType === 'couple' ? 'Nosso cantinho romântico ❤️' : 'Ideias da turma'}
+                      value={panelName}
+                      onChange={(e) => setPanelName(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Palette className="w-4 h-4 inline mr-1" />
+                      Cor da Borda do Mural
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {colors.borders.map(color => (
+                        <button
+                          key={color}
+                          onClick={() => setBorderColor(color)}
+                          className={`w-12 h-12 rounded-xl border-4 transition-all ${
+                            borderColor === color ? 'scale-110 shadow-lg' : 'hover:scale-105'
+                          }`}
+                          style={{ backgroundColor: color, borderColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Palette className="w-4 h-4 inline mr-1" />
+                      Cor de Fundo do Mural
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {colors.backgrounds.map(color => (
+                        <button
+                          key={color}
+                          onClick={() => setBackgroundColor(color)}
+                          className={`w-12 h-12 rounded-xl border-2 transition-all relative ${
+                            backgroundColor === color ? 'border-gray-700 scale-110 shadow-lg' : 'border-gray-300 hover:scale-105'
+                          }`}
+                          style={{ backgroundColor: color }}
+                        >
+                          {backgroundColor === color && (
+                            <Check className="w-4 h-4 text-gray-700 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-center">
+                      {requirePassword ? <Lock className="w-5 h-5 text-slate-600 mr-2" /> : <Unlock className="w-5 h-5 text-gray-400 mr-2" />}
+                      <span className="text-sm font-medium text-gray-700">Proteger com senha</span>
+                    </div>
+                    <button
+                      onClick={() => setRequirePassword(!requirePassword)}
+                      className={`w-12 h-6 rounded-full transition-colors ${
+                        requirePassword ? 'bg-slate-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
+                        requirePassword ? 'translate-x-6' : 'translate-x-0.5'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {requirePassword && (
+                    <input
+                      type="password"
+                      placeholder="Digite a senha do mural"
+                      value={panelPassword}
+                      onChange={(e) => setPanelPassword(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
+                    />
+                  )}
+
+                  <button
+                    onClick={createPanel}
+                    disabled={loading}
+                    className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 transform hover:scale-[1.02] ${
+                      panelType === 'couple' 
+                        ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700'
+                        : 'bg-gradient-to-r from-slate-600 to-gray-700 text-white hover:from-slate-700 hover:to-gray-800'
+                    }`}
+                  >
+                    {loading ? 'Criando...' : `Criar ${panelType === 'couple' ? 'Mural Romântico ❤️' : 'Mural para Amigos'}`}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const createPost = async () => {
     if (!newPost.content.trim()) {
@@ -588,305 +1016,6 @@ export default function StickyNotesApp() {
     exitPanel();
   };
 
-  // Tela inicial - Nova estrutura
-  if (!initialChoice) {
-    return (
-      <div className={`min-h-screen ${GRADIENTS.friends} flex items-center justify-center p-4`}>
-        <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-2xl w-full border border-gray-100">
-          <div className="flex items-center justify-center mb-8">
-            <StickyNote className="w-12 h-12 text-slate-600 mr-3" />
-            <h1 className="text-5xl font-bold text-gray-800">
-              Sticky Notes
-            </h1>
-          </div>
-          <p className="text-center text-gray-600 mb-10 text-lg">
-            Escolha uma opção para começar.
-          </p>
-
-          <div className="space-y-4">
-            <button
-              onClick={() => setInitialChoice('create')}
-              className="w-full p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl hover:from-blue-100 hover:to-indigo-100 transition-all duration-300 border border-blue-200 hover:border-blue-300 hover:shadow-lg transform hover:-translate-y-1"
-            >
-              <div className="flex items-center">
-                <StickyNote className="w-8 h-8 text-blue-600 mr-4" />
-                <div className="text-left">
-                  <h3 className="text-xl font-semibold text-gray-800">Crie seu mural</h3>
-                  <p className="text-gray-600 text-sm mt-1">Comece um novo mural para compartilhar com amigos ou seu par</p>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setInitialChoice('join')}
-              className="w-full p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl hover:from-green-100 hover:to-emerald-100 transition-all duration-300 border border-green-200 hover:border-green-300 hover:shadow-lg transform hover:-translate-y-1"
-            >
-              <div className="flex items-center">
-                <Hash className="w-8 h-8 text-green-600 mr-4" />
-                <div className="text-left">
-                  <h3 className="text-xl font-semibold text-gray-800">Acesse um mural</h3>
-                  <p className="text-gray-600 text-sm mt-1">Entre em um mural existente usando um código</p>
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Tela de escolha do tipo de painel (após escolher "Crie seu mural")
-  if (initialChoice === 'create' && !panelType) {
-    return (
-      <div className={`min-h-screen ${GRADIENTS.friends} flex items-center justify-center p-4`}>
-        <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-2xl w-full border border-gray-100">
-          <button
-            onClick={() => setInitialChoice('')}
-            className="mb-6 text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1 text-sm"
-          >
-            ← Voltar
-          </button>
-
-          <div className="flex items-center justify-center mb-8">
-            <StickyNote className="w-12 h-12 text-slate-600 mr-3" />
-            <h1 className="text-4xl font-bold text-gray-800">
-              Tipo de Mural
-            </h1>
-          </div>
-          <p className="text-center text-gray-600 mb-10 text-lg">
-            Escolha o tipo de grupo para seu mural.
-          </p>
-
-          <div className="space-y-4">
-            <button
-              onClick={() => setPanelType('friends')}
-              className="w-full p-6 bg-gradient-to-r from-slate-50 to-gray-50 rounded-2xl hover:from-slate-100 hover:to-gray-100 transition-all duration-300 border border-gray-200 hover:border-gray-300 hover:shadow-lg transform hover:-translate-y-1"
-            >
-              <div className="flex items-center">
-                <Users className="w-8 h-8 text-slate-600 mr-4" />
-                <div className="text-left">
-                  <h3 className="text-xl font-semibold text-gray-800">Para amigos</h3>
-                  <p className="text-gray-600 text-sm mt-1">Mural aconchegante para compartilhar com amigos</p>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setPanelType('couple')}
-              className="w-full p-6 bg-gradient-to-r from-rose-50 to-pink-50 rounded-2xl hover:from-rose-100 hover:to-pink-100 transition-all duration-300 border border-rose-200 hover:border-rose-300 hover:shadow-lg transform hover:-translate-y-1"
-            >
-              <div className="flex items-center">
-                <Heart className="w-8 h-8 text-rose-500 mr-4" />
-                <div className="text-left">
-                  <h3 className="text-xl font-semibold text-gray-800">Para casais</h3>
-                  <p className="text-gray-600 text-sm mt-1">Mural romântico para compartilhar com seu par</p>
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Tela de criação/acesso
-  if (!currentPanel) {
-    const colors = getColors(panelType === 'join' ? 'friends' : panelType);
-    const gradient = panelType === 'couple' ? GRADIENTS.couple : GRADIENTS.friends;
-
-    return (
-      <div className={`min-h-screen ${gradient} flex items-center justify-center p-4`}>
-        <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full border border-gray-100">
-          <button
-            onClick={() => {
-              if (initialChoice === 'join') {
-                setInitialChoice('');
-              } else {
-                setPanelType('');
-              }
-            }}
-            className="mb-6 text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1 text-sm"
-          >
-            ← Voltar
-          </button>
-
-          <div className="flex items-center justify-center mb-8">
-            {panelType === 'couple' ? (
-              <Heart className="w-10 h-10 text-rose-500 mr-3" />
-            ) : initialChoice === 'join' ? (
-              <Hash className="w-10 h-10 text-green-600 mr-3" />
-            ) : (
-              <StickyNote className="w-10 h-10 text-slate-600 mr-3" />
-            )}
-            <h2 className="text-4xl font-bold text-gray-800">
-              {panelType === 'couple' ? 'Painel Romântico' : 
-               initialChoice === 'join' ? 'Acessar Mural' : 
-               'Novo Mural'}
-            </h2>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Seu Nome
-              </label>
-              <input
-                type="text"
-                placeholder="Como você quer ser chamado?"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
-              />
-            </div>
-
-            {initialChoice === 'join' ? (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Código do Mural
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: ABC123"
-                    value={panelCode}
-                    onChange={(e) => setPanelCode(e.target.value.toUpperCase())}
-                    maxLength={6}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent uppercase font-mono text-lg tracking-wider transition-all"
-                  />
-                </div>
-
-                {requiresPasswordCheck && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Senha do Mural
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="Digite a senha do mural"
-                      value={joinPassword}
-                      onChange={(e) => setJoinPassword(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
-                    />
-                  </div>
-                )}
-
-                <button
-                  onClick={accessPanel}
-                  disabled={loading}
-                  className="w-full py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 transform hover:scale-[1.02] bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700"
-                >
-                  {loading ? 'Entrando...' : 'Entrar no Mural'}
-                </button>
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nome do Mural
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={panelType === 'couple' ? 'Nosso cantinho romântico ❤️' : 'Ideias da turma'}
-                    value={panelName}
-                    onChange={(e) => setPanelName(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Palette className="w-4 h-4 inline mr-1" />
-                    Cor da Borda do Mural
-                  </label>
-                  <div className="flex gap-2 flex-wrap">
-                    {colors.borders.map(color => (
-                      <button
-                        key={color}
-                        onClick={() => setBorderColor(color)}
-                        className={`w-12 h-12 rounded-xl border-4 transition-all ${
-                          borderColor === color ? 'scale-110 shadow-lg' : 'hover:scale-105'
-                        }`}
-                        style={{ backgroundColor: color, borderColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Palette className="w-4 h-4 inline mr-1" />
-                    Cor de Fundo do Mural
-                  </label>
-                  <div className="flex gap-2 flex-wrap">
-                    {colors.backgrounds.map(color => (
-                      <button
-                        key={color}
-                        onClick={() => setBackgroundColor(color)}
-                        className={`w-12 h-12 rounded-xl border-2 transition-all relative ${
-                          backgroundColor === color ? 'border-gray-700 scale-110 shadow-lg' : 'border-gray-300 hover:scale-105'
-                        }`}
-                        style={{ backgroundColor: color }}
-                      >
-                        {backgroundColor === color && (
-                          <Check className="w-4 h-4 text-gray-700 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div className="flex items-center">
-                    {requirePassword ? <Lock className="w-5 h-5 text-slate-600 mr-2" /> : <Unlock className="w-5 h-5 text-gray-400 mr-2" />}
-                    <span className="text-sm font-medium text-gray-700">Proteger com senha</span>
-                  </div>
-                  <button
-                    onClick={() => setRequirePassword(!requirePassword)}
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      requirePassword ? 'bg-slate-600' : 'bg-gray-300'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
-                      requirePassword ? 'translate-x-6' : 'translate-x-0.5'
-                    }`} />
-                  </button>
-                </div>
-
-                {requirePassword && (
-                  <input
-                    type="password"
-                    placeholder="Digite a senha do mural"
-                    value={panelPassword}
-                    onChange={(e) => setPanelPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
-                  />
-                )}
-
-                <button
-                  onClick={createPanel}
-                  disabled={loading}
-                  className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 transform hover:scale-[1.02] ${
-                    panelType === 'couple' 
-                      ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700'
-                      : 'bg-gradient-to-r from-slate-600 to-gray-700 text-white hover:from-slate-700 hover:to-gray-800'
-                  }`}
-                >
-                  {loading ? 'Criando...' : `Criar ${panelType === 'couple' ? 'Mural Romântico ❤️' : 'Mural para Amigos'}`}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Tela do painel
   const panelGradient = currentPanel.type === 'couple' ? GRADIENTS.panel_couple : GRADIENTS.panel_friends;
   const currentColors = getColors(currentPanel.type);
@@ -945,8 +1074,8 @@ export default function StickyNotesApp() {
                 onClick={() => setShowShareModal(true)}
                 className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2 shadow-md text-sm ${
                   currentPanel.type === 'couple'
-                    ? 'bg-gradient-to-r from-rose-400 to-pink-500 text-white hover:from-rose-500 hover:to-pink-600'
-                    : 'bg-gradient-to-r from-slate-500 to-gray-600 text-white hover:from-slate-600 hover:to-gray-700'
+                    ? 'bg-gradient-to-r from-[#FF9292] to-[#FFB4B4] text-white hover:from-[#FFB4B4] hover:to-[#FFDCDC]'
+                    : 'bg-gradient-to-r from-[#9EC6F3] to-[#BDDDE4] text-white hover:from-[#BDDDE4] hover:to-[#FFF1D5]'
                 }`}
               >
                 <Share2 className="w-4 h-4" />
@@ -973,7 +1102,7 @@ export default function StickyNotesApp() {
         <div 
           className="relative w-full h-full rounded-lg shadow-inner overflow-hidden"
           style={{
-            backgroundColor: currentPanel.background_color || backgroundColor || '#FFFFFF',
+            backgroundColor: currentPanel.background_color || backgroundColor || '#FBFBFB',
             border: `8px solid ${currentPanel.border_color || borderColor}`,
             backgroundImage: `
               repeating-linear-gradient(
@@ -1270,11 +1399,11 @@ export default function StickyNotesApp() {
                           : 'border-gray-300 hover:scale-105 hover:border-gray-400'
                       }`}
                       style={{ backgroundColor: color }}
-                      title={color === '#FFFFFF' ? 'Branco puro' : color}
+                      title={`Cor: ${color}`}
                     >
                       {newPost.color === color && (
                         <Check className={`w-4 h-4 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 ${
-                          color === '#FFFFFF' || color === '#FAFAF8' || color === '#F8F8F6' 
+                          ['#F9F5F6', '#F8E8EE', '#A8D8EA', '#FFFFD2'].includes(color)
                             ? 'text-gray-700' 
                             : 'text-white drop-shadow-sm'
                         }`} />

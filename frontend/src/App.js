@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StickyNote, Users, Heart, Lock, Unlock, User, UserX, Send, Copy, Check, LogOut, Hash } from 'lucide-react';
 
-const API_URL = 'http://localhost:3001';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:80';
 
 // Paleta de cores neutras e aconchegantes
 const COZY_COLORS = {
@@ -162,7 +162,7 @@ export default function StickyNotesApp() {
     if (!currentPanel) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/murals/${currentPanel.id}/posts`);
+      const response = await fetch(`${API_URL}/api/panels/${currentPanel.id}/posts`);
       if (response.ok) {
         const postsData = await response.json();
         setPosts(postsData);
@@ -211,17 +211,17 @@ export default function StickyNotesApp() {
     setError('');
 
     try {
-      const response = await fetch(`${API_URL}/api/murals`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          name: panelName,
-          type: panelType,
-          password: requirePassword ? panelPassword : null,
-          creator: userName,
-          borderColor
-        })
-      });
+      const response = await fetch(`${API_URL}/api/panels`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        name: panelName,
+        type: panelType,
+        password: requirePassword ? panelPassword : null,
+        creator: userName,
+        borderColor
+    })
+  });
 
       if (!response.ok) throw new Error('Erro ao criar painel');
 
@@ -250,14 +250,14 @@ export default function StickyNotesApp() {
     setError('');
 
     try {
-      const response = await fetch(`${API_URL}/api/murals/${panelCode.toUpperCase()}`);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Painel não encontrado');
-        }
-        throw new Error('Erro ao acessar painel');
-      }
+      const response = await fetch(`${API_URL}/api/panels/${panelCode.toUpperCase()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: joinPassword,
+          userName: userName
+      })
+    });
 
       const panel = await response.json();
       setCurrentPanel(panel);
@@ -286,7 +286,7 @@ export default function StickyNotesApp() {
       const randomX = Math.floor(Math.random() * 600) + 50;
       const randomY = Math.floor(Math.random() * 300) + 50;
 
-      const response = await fetch(`${API_URL}/api/murals/${currentPanel.id}/posts`, {
+      const response = await fetch(`${API_URL}/api/panels/${currentPanel.id}/posts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -314,7 +314,7 @@ export default function StickyNotesApp() {
 
   const deletePost = async (postId) => {
     try {
-      await fetch(`${API_URL}/api/posts/${postId}?mural_id=${currentPanel.id}`, {
+      await fetch(`${API_URL}/api/posts/${postId}?panel_id=${currentPanel.id}`, {
         method: 'DELETE'
       });
       
@@ -324,17 +324,17 @@ export default function StickyNotesApp() {
     }
   };
 
-  const movePost = async (postId, x, y) => {
-    try {
-      await fetch(`${API_URL}/api/posts/${postId}/position`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          position_x: x,
-          position_y: y,
-          mural_id: currentPanel.id
-        })
-      });
+const movePost = async (postId, x, y) => {
+  try {
+    await fetch(`${API_URL}/api/posts/${postId}/position`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        position_x: x,
+        position_y: y,
+        panel_id: currentPanel.id
+      })
+    });
 
       setPosts(prev => prev.map(p => 
         p.id === postId ? { ...p, position_x: x, position_y: y } : p

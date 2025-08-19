@@ -1,22 +1,22 @@
-#version: '3.8'
+version: '3.8'
 
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: mural_postgres
+    container_name: sticky_postgres
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: mural_db
+      POSTGRES_DB: stickynotes_db  # CORREÇÃO: nome consistente
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - mural_network
+      - sticky_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d mural_db"]
+      test: ["CMD-SHELL", "pg_isready -U user -d stickynotes_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,13 +24,13 @@ services:
   # Redis Cache & Pub/Sub
   redis:
     image: redis:7-alpine
-    container_name: mural_redis
+    container_name: sticky_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - mural_network
+      - sticky_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -42,12 +42,12 @@ services:
     build: 
       context: ./backend
       dockerfile: Dockerfile
-    container_name: mural_backend1
+    container_name: sticky_backend1
     environment:
       PORT: 3001
       REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgresql://user:password@postgres:5432/mural_db
-      FRONTEND_URL: http://localhost:3000
+      DATABASE_URL: postgresql://user:password@postgres:5432/stickynotes_db
+      FRONTEND_URL: http://frontend:3000  # CORREÇÃO: usar nome do serviço
       NODE_ENV: production
     ports:
       - "3001:3001"
@@ -57,7 +57,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - mural_network
+      - sticky_network
     restart: unless-stopped
 
   # Backend Server Instance 2
@@ -65,28 +65,28 @@ services:
     build: 
       context: ./backend
       dockerfile: Dockerfile
-    container_name: mural_backend2
+    container_name: sticky_backend2
     environment:
-      PORT: 3002
+      PORT: 3001  # CORREÇÃO: manter porta interna igual
       REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgresql://user:password@postgres:5432/mural_db
-      FRONTEND_URL: http://localhost:3000
+      DATABASE_URL: postgresql://user:password@postgres:5432/stickynotes_db
+      FRONTEND_URL: http://frontend:3000  # CORREÇÃO: usar nome do serviço
       NODE_ENV: production
     ports:
-      - "3002:3002"
+      - "3002:3001"  # CORREÇÃO: mapear porta externa diferente para interna 3001
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - mural_network
+      - sticky_network
     restart: unless-stopped
 
   # Nginx Load Balancer
   nginx:
     image: nginx:alpine
-    container_name: mural_nginx
+    container_name: sticky_nginx
     ports:
       - "80:80"
     volumes:
@@ -95,7 +95,7 @@ services:
       - backend1
       - backend2
     networks:
-      - mural_network
+      - sticky_network
     restart: unless-stopped
 
   # Frontend (React)
@@ -103,19 +103,19 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: mural_frontend
+    container_name: sticky_frontend
     environment:
-      REACT_APP_API_URL: http://localhost:80
+      REACT_APP_API_URL: http://nginx  # CORREÇÃO: apontar para nginx
     ports:
       - "3000:3000"
     depends_on:
       - nginx
     networks:
-      - mural_network
+      - sticky_network
     restart: unless-stopped
 
 networks:
-  mural_network:
+  sticky_network:  # CORREÇÃO: nome consistente
     driver: bridge
 
 volumes:
